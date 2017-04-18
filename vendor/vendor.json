@@ -1,0 +1,25 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "g/V4qrXjUGG9B+e3hB+4NAYJ5Gs=",
+			"path": "github.com/gorilla/context",
+			"revision": "08b5f424b9271eedf6f9f0ce86cb9396ed337a42",
+			"revisionTime": "2016-08-17T18:46:32Z"
+		},
+		{
+			"checksumSHA1": "zmCk+lgIeiOf0Ng9aFP9aFy8ksE=",
+			"path": "github.com/gorilla/mux",
+			"revision": "599cba5e7b6137d46ddf58fb1765f5d928e69604",
+			"revisionTime": "2017-02-28T22:43:54Z"
+		},
+		{
+			"checksumSHA1": "ezZyPBDiKHM5y+YmlIhrWIzgbfw=",
+			"path": "github.com/urfave/negroni",
+			"revision": "c0db5feaa33826cd5117930c8f4ee5c0f565eec6",
+			"revisionTime": "2017-02-26T00:53:33Z"
+		}
+	],
+	"rootPath": "github.com/andrestc/go-prom-talk"
+}
