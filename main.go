@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/negroni"
 )
 
@@ -22,6 +23,7 @@ func main() {
 
 func router() http.Handler {
 	r := mux.NewRouter().StrictSlash(true)
+	r.Handle("/metrics", promhttp.Handler())
 	r.HandleFunc("/city/{name}/temp", cityTemp)
 	n := negroni.Classic()
 	n.UseHandler(r)
