@@ -12,6 +12,8 @@ import (
 	"github.com/urfave/negroni"
 )
 
+var keys = make(chan string)
+
 func main() {
 	s := &http.Server{
 		Addr:         ":8080",
@@ -19,6 +21,7 @@ func main() {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
+	go Process(keys)
 	log.Println("HTTP server listening at :8080...")
 	log.Fatal(s.ListenAndServe())
 }
@@ -38,6 +41,7 @@ func cityTemp(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Must provide a city name.", http.StatusBadRequest)
 		return
 	}
+	keys <- name
 	temp, err := weather.GetCityTemp(name)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
