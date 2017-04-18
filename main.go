@@ -24,7 +24,7 @@ func main() {
 func router() http.Handler {
 	r := mux.NewRouter().StrictSlash(true)
 	r.Handle("/metrics", promhttp.Handler())
-	r.HandleFunc("/city/{name}/temp", cityTemp)
+	r.HandleFunc("/city/{name}/temp", instrumentHandler("/city/{name}/temp", cityTemp))
 	n := negroni.Classic()
 	n.UseHandler(r)
 	return n
