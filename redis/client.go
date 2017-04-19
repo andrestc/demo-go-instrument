@@ -31,22 +31,35 @@ func init() {
 		return float64(len(keys))
 	}))
 	prometheus.MustRegister(queueWaitDuration)
+	prometheus.MustRegister(redisOps)
 }
+
+var (
+	redisOps = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "myapp_redis_worker_operations",
+		Help: "The total operations performed by redis worker.",
+	}, []string{"operation", "result"})
+)
 
 func startWorker(client *redis.Client) {
 	fmt.Printf("Starting background worker...\n")
 	for {
+		opLabel := "ping"
+		var err error
 		select {
 		case key := <-keys:
-			fmt.Printf("incrementing count for key: %s.\n", key)
 			result := client.Incr(key)
-			if result.Err() != nil {
-				fmt.Printf("failed to increment key %s: %s", key, result.Err())
-			}
+			opLabel = "incr"
+			err = result.Err()
 		case <-time.After(time.Second * 10):
-			fmt.Println("pinging redis...")
-			client.Ping()
+			result := client.Ping()
+			err = result.Err()
 		}
+		resultLabel := "ok"
+		if err != nil {
+			resultLabel = "error"
+		}
+		redisOps.WithLabelValues(opLabel, resultLabel).Inc()
 	}
 }
 
