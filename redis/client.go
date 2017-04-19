@@ -30,6 +30,7 @@ func init() {
 	}, func() float64 {
 		return float64(len(keys))
 	}))
+	prometheus.MustRegister(queueWaitDuration)
 }
 
 func startWorker(client *redis.Client) {
@@ -49,8 +50,21 @@ func startWorker(client *redis.Client) {
 	}
 }
 
+var (
+	queueWaitDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name: "myapp_redis_queue_wait_duration_seconds",
+		Help: "The wait duration when trying to write to the redis queue",
+	})
+)
+
 func Increment(key string) {
-	keys <- key
+	select {
+	case keys <- key:
+	default:
+		now := time.Now()
+		keys <- key
+		queueWaitDuration.Observe(time.Since(now).Seconds())
+	}
 }
 
 var (
