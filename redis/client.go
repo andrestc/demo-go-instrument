@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/redis.v3"
 )
 
@@ -22,6 +23,7 @@ func init() {
 	}
 	keys = make(chan string)
 	go startWorker(client)
+	prometheus.MustRegister(&redisCollector{client: client})
 }
 
 func startWorker(client *redis.Client) {
@@ -43,4 +45,36 @@ func startWorker(client *redis.Client) {
 
 func Increment(key string) {
 	keys <- key
+}
+
+var (
+	requestsDesc  = prometheus.NewDesc("myapp_redis_connections_requests_total", "The total number of connections requests to redis pool.", []string{}, nil)
+	hitsDesc      = prometheus.NewDesc("myapp_redis_connections_hits_total", "The total number of times a free connection was found in redis pool.", []string{}, nil)
+	waitsDesc     = prometheus.NewDesc("myapp_redis_connections_waits_total", "The total number of times the redis pool had to wait for a connection.", []string{}, nil)
+	timeoutsDesc  = prometheus.NewDesc("myapp_redis_connections_timeouts_total", "The total number of wait timeouts in redis pool.", []string{}, nil)
+	connsDesc     = prometheus.NewDesc("myapp_redis_connections_current", "The current number of connections in redis pool.", []string{}, nil)
+	freeConnsDesc = prometheus.NewDesc("myapp_redis_connections_free_current", "The current number of free connections in redis pool.", []string{}, nil)
+)
+
+type redisCollector struct {
+	client *redis.Client
+}
+
+func (c *redisCollector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- requestsDesc
+	ch <- hitsDesc
+	ch <- waitsDesc
+	ch <- timeoutsDesc
+	ch <- connsDesc
+	ch <- freeConnsDesc
+}
+
+func (c *redisCollector) Collect(ch chan<- prometheus.Metric) {
+	stats := c.client.PoolStats()
+	ch <- prometheus.MustNewConstMetric(requestsDesc, prometheus.CounterValue, float64(stats.Requests))
+	ch <- prometheus.MustNewConstMetric(hitsDesc, prometheus.CounterValue, float64(stats.Hits))
+	ch <- prometheus.MustNewConstMetric(waitsDesc, prometheus.CounterValue, float64(stats.Waits))
+	ch <- prometheus.MustNewConstMetric(timeoutsDesc, prometheus.CounterValue, float64(stats.Timeouts))
+	ch <- prometheus.MustNewConstMetric(connsDesc, prometheus.GaugeValue, float64(stats.TotalConns))
+	ch <- prometheus.MustNewConstMetric(freeConnsDesc, prometheus.GaugeValue, float64(stats.FreeConns))
 }
