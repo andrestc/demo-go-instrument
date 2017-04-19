@@ -24,6 +24,12 @@ func init() {
 	keys = make(chan string)
 	go startWorker(client)
 	prometheus.MustRegister(&redisCollector{client: client})
+	prometheus.MustRegister(prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Name: "myapp_redis_queue_current_length",
+		Help: "The current number of itens on redis queue.",
+	}, func() float64 {
+		return float64(len(keys))
+	}))
 }
 
 func startWorker(client *redis.Client) {
