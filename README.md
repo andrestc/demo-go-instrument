@@ -29,6 +29,79 @@ With this single line of code we add several metrics about the Go runtime to our
 
 ## Branch 03
 
+We begin this branch by adding instrumentation to our own handler. 
+
+Registering the new metric:
+
+```go
+var (
+	handlerDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name: "myapp_handlers_duration_seconds",
+		Help: "Handlers request duration in seconds",
+	}, []string{"path"})
+)
+
+func init() {
+	prometheus.MustRegister(handlerDuration)
+}
+```
+
+We then create a wrapper handler that calls the underlaying handler and measures the duration it took:
+
+```go
+func instrumentHandler(pattern string, next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		now := time.Now()
+		next(w, r)
+		handlerDuration.WithLabelValues(pattern).Observe(time.Since(now).Seconds())
+	})
+}
+```
+
+We use `pattern` as a label to be able to distingish the duration of different handlers.
+
+The router is updated to use this handler on top of the old one:
+
+```go
+r.HandleFunc("/city/{name}/temp", instrumentHandler("/city/{name}/temp", cityTemp)
+```
+
+We can also instrument our server and keep track of the opened connections. First, registering the new metric:
+
+```go
+var (
+	openConnections = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "myapp_open_connections",
+		Help: "The current number of open connections.",
+	})
+)
+
+func init() {
+	prometheus.MustRegister(openConnections)
+}
+```
+
+And then updating our `http.Server`:
+
+```go
+s := &http.Server{
+	Addr:         ":8080",
+	Handler:      router(),
+	ReadTimeout:  10 * time.Second,
+	WriteTimeout: 30 * time.Second,
+	ConnState: func(c net.Conn, s http.ConnState) {
+		switch s {
+		case http.StateNew:
+			openConnections.Inc()
+		case http.StateHijacked | http.StateClosed:
+			openConnections.Dec()
+		}
+	},
+}
+```
+
+The `ConnState` is called everytime a connection changes state.
+
 ## Branch 04
 
 In this step we added instrumentation to our `weather` package. The instrumentation on this package follows the RED pattern:
