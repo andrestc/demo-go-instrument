@@ -136,5 +136,40 @@ func (c *redisCollector) Collect(ch chan<- prometheus.Metric) {
 Every time Prometheus fetches the `/metrics` endpoint on our API the `Collect` function is called and sends the metrics to the provided channel.
 
 ## Branch 06
+
+Our handlers interact with the `redis` package by calling `redis.Increment` which writes to a channel. Another goroutine (G2), in the `redis` package keeps listening for this channel and talks to the redis server everytime a request is made thru it. 
+
+Currently, we are not using a buffered channel, which means that our call to the `redis.Increment` will block if the G2 is already serving a request (talking to the redis backend). We can instrument our channel to discover if we are indeed blocking (Saturation). This is done in this step.
+
+We begin by introducing a new metric:
+
+```go
+var (
+	queueWaitDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name: "myapp_redis_queue_wait_duration_seconds",
+		Help: "The wait duration when trying to write to the redis queue",
+	})
+)
+```
+
+And changing our `redis.Increment` implementation to:
+
+```go
+func Increment(key string) {
+	select {
+	case keys <- key:
+	default:
+		now := time.Now()
+		keys <- key
+		queueWaitDuration.Observe(time.Since(now).Seconds())
+	}
+}
+```
+
+This means that, if there is no request being served (channel is empty), the first case statement is reached: `keys <- key` and we simply add the key to the channel and return. If the channel blocks, the `default` case is reached and we record the time we spend blocked.
+
+This metric can be used to measure our saturation and to tune the channel buffer size for our requirements.
+
+
 ## Branch 07
 ## Branch 08
