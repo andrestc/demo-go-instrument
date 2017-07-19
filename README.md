@@ -186,3 +186,44 @@ This means that, if there is no request being served (channel is empty), the fir
 This metric can be used to measure our saturation and to tune the channel buffer size for our requirements.
 
 ## Branch 08
+
+In this step we add some instrumentation to our redis backend to measure the number of operations we are applying.
+
+We start by registering a new metric:
+
+```go
+var (
+	redisOps = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "myapp_redis_worker_operations",
+		Help: "The total operations performed by redis worker.",
+	}, []string{"operation", "result"})
+)
+```
+
+And then updating our background worker:
+
+```go
+func startWorker(client *redis.Client) {
+	fmt.Printf("Starting background worker...\n")
+	for {
+		opLabel := "ping"
+		var err error
+		select {
+		case key := <-keys:
+			result := client.Incr(key)
+			opLabel = "incr"
+			err = result.Err()
+		case <-time.After(time.Second * 10):
+			result := client.Ping()
+			err = result.Err()
+		}
+		resultLabel := "ok"
+		if err != nil {
+			resultLabel = "error"
+		}
+		redisOps.WithLabelValues(opLabel, resultLabel).Inc()
+	}
+}
+```
+
+We use labels to distinguish the operation type and the result.
