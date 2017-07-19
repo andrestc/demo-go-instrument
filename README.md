@@ -7,17 +7,17 @@ Go client.
 
 The application is a single endpoint API that fetches the weather for a given city using the [openweathermap API](http://api.openweathermap.org). The code responsible for fetching the weather information is on the `weather` package.
 
-The application also uses a redis server to store the number of requests done for each city, this logic is on the `redis` package and uses a channel to serialize the calls to the redis backend. This is done just to give different examples on how to instrument those.
+The application also uses a redis server to store the number of requests done for each city, this logic is on the `redis` package and uses a channel to serialize the calls to the redis backend. This is done just to illustrate different instrumentation patterns.
 
 # Timeline
 
 Use the different branches to navigate between the code as we go from a completely non instrumented code to a code with some instrumentation coverage.
 
-* Branch 01
+## Branch 01
 
 This is the base code that implements the logic described in the introduction section.
 
-* Branch 02
+## Branch 02
 
 In this step we introduced the prometheus client to our vendored dependencies in included it's HTTP handler on our server:
 
@@ -27,9 +27,9 @@ r.Handle("/metrics", promhttp.Handler())
 
 With this single line of code we add several metrics about the Go runtime to our `/metrics` endpoint.
 
-* Branch 03
+## Branch 03
 
-* Branch 04
+## Branch 04
 
 In this step we added instrumentation to our `weather` package. The instrumentation on this package follows the RED pattern:
 
@@ -87,7 +87,7 @@ defer func() {
 }()
 ```
 
-* Branch 05
+## Branch 05
 
 In this step we add instrumentation to the `redis` package by implementing the `prometheus.Collector` interface to expose some of the metrics already available on the `redis` client.
 
@@ -135,6 +135,6 @@ func (c *redisCollector) Collect(ch chan<- prometheus.Metric) {
 
 Every time Prometheus fetches the `/metrics` endpoint on our API the `Collect` function is called and sends the metrics to the provided channel.
 
-* Branch 06
-* Branch 07
-* Branch 08
+## Branch 06
+## Branch 07
+## Branch 08
