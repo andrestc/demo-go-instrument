@@ -137,9 +137,24 @@ Every time Prometheus fetches the `/metrics` endpoint on our API the `Collect` f
 
 ## Branch 06
 
-Our handlers interact with the `redis` package by calling `redis.Increment` which writes to a channel. Another goroutine (G2), in the `redis` package keeps listening for this channel and talks to the redis server everytime a request is made thru it. 
+Our handlers interact with the `redis` package by calling `redis.Increment` which writes to a channel. Another goroutine, in the `redis` package keeps listening for this channel and talks to the redis server everytime a request is made thru it. 
 
-Currently, we are not using a buffered channel, which means that our call to the `redis.Increment` will block if the G2 is already serving a request (talking to the redis backend). We can instrument our channel to discover if we are indeed blocking (Saturation). This is done in this step.
+It's usefull to instrument the size of the channel to understand if we need to increase it's buffer size.
+
+```go
+prometheus.MustRegister(prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+    Name: "myapp_redis_queue_current_length",
+    Help: "The current number of itens on redis queue.",
+}, func() float64 {
+    return float64(len(keys))
+}))
+```
+
+This snippet registers a new metric, using one of the `New*Func` family of functions. This function (that returns the length of the `keys` channel), will be called everytime Prometheus scrapes our service. This instrument our channel and might be used to discover saturation and tune the buffer size.
+
+## Branch 07
+
+Our call to the `redis.Increment` will block if the channel hits it's buffer size. We can instrument our channel to discover if we are indeed blocking (Saturation). This is done in this step.
 
 We begin by introducing a new metric:
 
@@ -170,6 +185,4 @@ This means that, if there is no request being served (channel is empty), the fir
 
 This metric can be used to measure our saturation and to tune the channel buffer size for our requirements.
 
-
-## Branch 07
 ## Branch 08
