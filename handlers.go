@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/andrestc/go-prom-talk/redis"
-	"github.com/andrestc/go-prom-talk/weather"
+	"github.com/andrestc/demo-go-instrument/redis"
+	"github.com/andrestc/demo-go-instrument/weather"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 )
